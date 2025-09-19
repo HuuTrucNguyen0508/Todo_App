@@ -41,19 +41,18 @@ export async function todosRoutes(fastify: FastifyInstance) {
 
   // GET /todos - List all todos
   fastify.get('/todos', async () => {
-      try {
-        const todos = await db.todo.findMany({
-          orderBy: { createdAt: 'desc' },
-        });
+    try {
+      const todos = await db.todo.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
 
-        logger.info({ count: todos.length }, 'Retrieved todos');
-        return todos;
-      } catch (error) {
-        logger.error(error, 'Failed to retrieve todos');
-        throw error;
-      }
+      logger.info({ count: todos.length }, 'Retrieved todos');
+      return todos;
+    } catch (error) {
+      logger.error(error, 'Failed to retrieve todos');
+      throw error;
     }
-  );
+  });
 
   // POST /todos - Create a new todo
   fastify.post(
