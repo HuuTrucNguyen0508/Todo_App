@@ -44,12 +44,12 @@ A full-stack Todo application with comprehensive observability stack including P
 4. **Wait for services to be ready** (check with `docker compose ps`)
 
 5. **Access the application**:
-   - **Web App**: http://localhost:3003
-   - **API**: http://localhost:4003
-   - **Grafana**: http://localhost:3103 (admin/admin)
-   - **Prometheus**: http://localhost:9093
-   - **Jaeger**: http://localhost:16683
-   - **Loki**: http://localhost:3113
+   - **Web App**: <http://localhost:3003>
+   - **API**: <http://localhost:4003>
+   - **Grafana**: <http://localhost:3103> (admin/admin)
+   - **Prometheus**: <http://localhost:9093>
+   - **Jaeger**: <http://localhost:16683>
+   - **Loki**: <http://localhost:3113>
 
 ## Development
 
@@ -129,4 +129,4 @@ The Grafana dashboard includes:
 - Container logs via Loki
 - Custom business metrics
 
-Access Grafana at http://localhost:3103 with credentials `admin/admin`.
+Access Grafana at <http://localhost:3103> with credentials `admin/admin`.

@@ -5,17 +5,19 @@
 Your Todo app now has **complete CI/CD workflows** with:
 
 ### 📁 **Workflow Files Created:**
-```
+
+```text
 .github/
 ├── workflows/
 │   ├── lint-and-format.yml      # Code quality checks
-│   ├── docker-build-and-push.yml # Container deployment  
+│   ├── docker-build-and-push.yml # Container deployment
 │   ├── tests.yml                # Testing (template for future)
 │   └── ci-cd.yml                # Combined pipeline (recommended)
 └── README.md                    # Workflow documentation
 ```
 
 ### 📦 **Package.json Scripts Added:**
+
 - `pnpm run lint` - Check code quality ✅ **Working**
 - `pnpm run lint:fix` - Auto-fix linting issues
 - `pnpm run format` - Format code with Prettier
@@ -27,10 +29,11 @@ Your Todo app now has **complete CI/CD workflows** with:
 ### 1. **Configure Docker Hub Secrets**
 
 In your GitHub repository:
+
 1. Go to **Settings** → **Secrets and variables** → **Actions**
 2. Add these repository secrets:
 
-```
+```text
 DOCKER_USERNAME: your-dockerhub-username
 DOCKER_PASSWORD: your-dockerhub-password-or-token
 ```
@@ -48,11 +51,13 @@ git push origin main
 ## 🔄 **How It Works**
 
 ### **On Every Push/PR to main or staging:**
+
 1. 🔍 **Lint & Format** - Checks code quality and formatting
-2. 🧪 **Test** - Runs test suite (placeholder currently)  
+2. 🧪 **Test** - Runs test suite (placeholder currently)
 3. 🐳 **Build & Push** - Builds and publishes Docker images (main branch only)
 
 ### **Workflow Features:**
+
 - ✅ **Multi-architecture builds** (AMD64 + ARM64)
 - ✅ **Intelligent caching** (pnpm + Docker layers)
 - ✅ **Clear error messages** with fix suggestions
@@ -62,12 +67,14 @@ git push origin main
 ## 📊 **Current Status**
 
 ### ✅ **Working Now:**
+
 - **Linting**: ESLint configured for both API and Web
 - **Formatting**: Prettier checks and auto-formatting
 - **Docker builds**: Ready for multi-platform deployment
 - **Enhanced tracing**: Full observability stack included
 
 ### 🔮 **Ready for Future:**
+
 - **Testing framework**: Template ready for Jest/Vitest
 - **Coverage reporting**: Artifact upload configured
 - **Database testing**: PostgreSQL service template ready
@@ -75,11 +82,13 @@ git push origin main
 ## 🎯 **Next Steps**
 
 ### **Immediate (Required for CI/CD):**
+
 1. **Set up Docker Hub secrets** (see setup above)
 2. **Push to GitHub** to trigger first workflow run
 3. **Monitor workflow runs** in GitHub Actions tab
 
 ### **Future Enhancements:**
+
 1. **Add testing framework** (Jest for API, React Testing Library for Web)
 2. **Set up test database** (PostgreSQL for integration tests)
 3. **Add E2E testing** (Playwright for full user journeys)
@@ -93,11 +102,12 @@ Once workflows run, your images will be available as:
 # API Image
 docker pull your-username/cursor-todo-api:latest
 
-# Web Image  
+# Web Image
 docker pull your-username/cursor-todo-web:latest
 ```
 
 ### **Image Features:**
+
 - ✅ **Production optimized** (multi-stage builds)
 - ✅ **Security hardened** (non-root users)
 - ✅ **Observability ready** (Jaeger, Prometheus, logs)
@@ -124,6 +134,7 @@ Your Todo app now has **professional-grade CI/CD**! 🚀
 ## 📝 **Example Workflow Output**
 
 When successful, you'll see:
+
 - ✅ **Lint results**: "No ESLint warnings or errors"
 - ✅ **Format check**: "All matched files use Prettier code style"
 - ✅ **Docker images**: Published with tags and deployment commands

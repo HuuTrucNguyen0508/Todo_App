@@ -40,9 +40,7 @@ export async function todosRoutes(fastify: FastifyInstance) {
   );
 
   // GET /todos - List all todos
-  fastify.get(
-    '/todos',
-    async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/todos', async () => {
       try {
         const todos = await db.todo.findMany({
           orderBy: { createdAt: 'desc' },

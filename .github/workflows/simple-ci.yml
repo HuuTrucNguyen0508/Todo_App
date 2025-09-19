@@ -16,7 +16,7 @@ jobs:
   lint-and-format:
     name: 🔍 Lint & Format
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,7 +48,7 @@ jobs:
     name: 🧪 Test
     runs-on: ubuntu-latest
     needs: lint-and-format
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [lint-and-format, test]
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

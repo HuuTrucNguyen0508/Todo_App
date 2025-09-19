@@ -40,7 +40,7 @@ This directory contains GitHub Actions workflows for the Todo app project.
 
 In your GitHub repository, go to **Settings → Secrets and variables → Actions** and add:
 
-```
+```text
 DOCKER_USERNAME: your-dockerhub-username
 DOCKER_PASSWORD: your-dockerhub-password-or-token
 ```
@@ -136,23 +136,23 @@ When you're ready to add testing:
 3. **Configure test scripts** in each app
 4. **Set up test database** (PostgreSQL service in workflow)
 
-### Recommended Testing Stack:
+### Recommended Testing Stack
 
-#### API Testing:
+#### API Testing
 
 ```bash
 pnpm add -D jest @types/jest supertest
 pnpm add -D @jest/globals ts-jest
 ```
 
-#### Web Testing:
+#### Web Testing
 
 ```bash
 pnpm add -D @testing-library/react @testing-library/jest-dom
 pnpm add -D jest-environment-jsdom
 ```
 
-#### E2E Testing:
+#### E2E Testing
 
 ```bash
 pnpm add -D @playwright/test
