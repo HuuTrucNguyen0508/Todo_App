@@ -1,0 +1,256 @@
+You are my Infrastructure AI Engineer.
+
+I will provide you with a deployment plan inside a .txt file.  
+Your job is to follow this plan step by step and:
+1. Generate the Terraform code exactly as laid out (main.tf, providers.tf, variables.tf, modules for ecr, ecs, alb, secrets, etc.).
+2. Keep file and folder structure consistent with the plan.
+3. Do not invent new services; only implement what the plan states.
+4. Use LocalStack AWS endpoints and NeonDB connection string secret.
+5. Integrate observability via Prometheus (scraping /metrics), Loki + Promtail (logs), and Jaeger (traces).
+6. Ensure outputs (like ALB dns_name, ECS service ARN, etc.) match what’s in the plan.
+7. When in doubt, re‑read the plan instead of making assumptions.
+
+Output:
+- A set of Terraform `.tf` files and module folder structure that I can use directly.
+- No extra explanations unless I ask for them.
+- Make sure all HCL code is syntactically valid.
+
+I will now paste the plan below. Please convert it into working Terraform files according to the instructions.
+
+LOCALSTACK TODO APP INFRASTRUCTURE PLAN
+=======================================
+
+GOAL
+----
+- Run the Todo app locally on LocalStack with simulated AWS infra:
+  * ECS (task & service)
+  * ECR for image storage
+  * ALB for access
+  * SecretsManager for NeonDB URL
+- Connect to real NeonDB (already working).
+- Use existing observability stack (Prometheus, Grafana, Loki, Promtail, Jaeger):
+  * App exports /metrics for Prometheus
+  * Logs go to stdout → Promtail → Loki
+  * Traces sent to Jaeger via OTEL/Jaeger exporter
+
+FILE STRUCTURE
+--------------
+infra/
+├─ main.tf
+├─ providers.tf
+├─ variables.tf
+├─ outputs.tf
+└─ modules/
+   ├─ ecr/
+   │  └─ main.tf
+   ├─ ecs/
+   │  └─ main.tf
+   ├─ alb/
+   │  └─ main.tf
+   └─ secrets/
+      └─ main.tf
+
+STEP 1: PROVIDER CONFIG
+-----------------------
+infra/providers.tf:
+-------------------
+provider "aws" {
+  region                      = var.region
+  access_key                  = "test"
+  secret_key                  = "test"
+  s3_use_path_style           = true
+  skip_credentials_validation = true
+  skip_requesting_account_id  = true
+
+  endpoints {
+    ecr            = "http://localhost:4566"
+    ecs            = "http://localhost:4566"
+    secretsmanager = "http://localhost:4566"
+    elbv2          = "http://localhost:4566"
+    iam            = "http://localhost:4566"
+  }
+}
+
+STEP 2: MAIN ENTRYPOINT
+-----------------------
+infra/main.tf:
+--------------
+terraform {
+  required_version = ">= 1.6"
+  backend "local" { path = "terraform.tfstate" }
+}
+
+module "secrets" {
+  source       = "./modules/secrets"
+  secret_name  = "NEON_DB_URL"
+  secret_value = var.neon_connection_string
+}
+
+module "ecr" {
+  source    = "./modules/ecr"
+  repo_name = "todo-app"
+}
+
+module "ecs" {
+  source        = "./modules/ecs"
+  cluster_name  = "todo-cluster"
+  service_name  = "todo-service"
+  repo_url      = module.ecr.repository_url
+  db_secret_arn = module.secrets.secret_arn
+  app_port      = 8080
+}
+
+module "alb" {
+  source       = "./modules/alb"
+  alb_name     = "todo-alb"
+  ecs_service  = module.ecs.service_arn
+  ecs_target_id = module.ecs.target_group_arn
+}
+
+STEP 3: VARIABLES
+-----------------
+infra/variables.tf:
+-------------------
+variable "region" {
+  description = "LocalStack AWS region"
+  default     = "us-east-1"
+}
+
+variable "neon_connection_string" {
+  description = "Neon connection string"
+  type        = string
+}
+
+STEP 4: MODULES
+---------------
+modules/secrets/main.tf:
+------------------------
+resource "aws_secretsmanager_secret" "this" {
+  name = var.secret_name
+}
+resource "aws_secretsmanager_secret_version" "this" {
+  secret_id     = aws_secretsmanager_secret.this.id
+  secret_string = var.secret_value
+}
+output "secret_arn" {
+  value = aws_secretsmanager_secret.this.arn
+}
+
+modules/ecr/main.tf:
+--------------------
+resource "aws_ecr_repository" "this" {
+  name = var.repo_name
+}
+output "repository_url" {
+  value = aws_ecr_repository.this.repository_url
+}
+
+modules/ecs/main.tf:
+--------------------
+resource "aws_ecs_cluster" "this" {
+  name = var.cluster_name
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = "todo-task"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "512"
+  memory                   = "1024"
+
+  container_definitions = jsonencode([
+    {
+      name      = "todo-app",
+      image     = "${var.repo_url}:latest",
+      essential = true,
+      portMappings = [{ containerPort = var.app_port, protocol = "tcp" }],
+      environment = [
+        { name = "OTEL_EXPORTER_JAEGER_ENDPOINT", value = "http://jaeger:14268/api/traces" }
+      ],
+      secrets = [{
+        name      = "DATABASE_URL",
+        valueFrom = var.db_secret_arn
+      }],
+      logConfiguration = {
+        logDriver = "awslogs", # simulated in LocalStack, logs still available
+        options = {
+          awslogs-group         = "/ecs/todo-app",
+          awslogs-region        = var.region,
+          awslogs-stream-prefix = "ecs"
+        }
+      }
+    }
+  ])
+}
+
+resource "aws_ecs_service" "service" {
+  name            = var.service_name
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = ["subnet-123456"]
+    security_groups  = ["sg-123456"]
+    assign_public_ip = true
+  }
+}
+
+output "service_arn" { value = aws_ecs_service.service.arn }
+output "task_def_arn" { value = aws_ecs_task_definition.app.arn }
+output "cluster_id" { value = aws_ecs_cluster.this.id }
+
+modules/alb/main.tf:
+--------------------
+resource "aws_lb" "this" {
+  name               = var.alb_name
+  load_balancer_type = "application"
+  subnets            = ["subnet-123456"]
+}
+
+resource "aws_lb_target_group" "tg" {
+  name     = "todo-tg"
+  port     = 8080
+  protocol = "HTTP"
+  vpc_id   = "vpc-123456"
+}
+
+resource "aws_lb_listener" "http" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 80
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.tg.arn
+  }
+}
+
+output "dns_name" { value = aws_lb.this.dns_name }
+output "target_group_arn" { value = aws_lb_target_group.tg.arn }
+
+STEP 5: WORKFLOW
+----------------
+1. Start LocalStack: `localstack start -d`
+2. Build & push docker image:
+   - `docker build -t todo-app:latest ./app`
+   - `docker tag todo-app:latest localhost.localstack.cloud:4510/todo-app:latest`
+   - `docker push localhost.localstack.cloud:4510/todo-app:latest`
+3. `terraform init && terraform apply -var="neon_connection_string=postgres://..."`
+
+STEP 6: OBSERVABILITY HOOKS
+---------------------------
+- Prometheus: scrape app at /metrics via ALB dns_name
+- Logs: Promtail scrapes Docker logs → Loki
+- Traces: app exports to Jaeger via OTEL_EXPORTER_JAEGER_ENDPOINT
+- Grafana dashboards for metrics + logs + traces
+
+ACCEPTANCE CRITERIA
+-------------------
+- App served by ALB (LocalStack DNS)
+- ECS injects NeonDB secret successfully
+- Prometheus scrapes /metrics
+- Logs visible in Loki via Promtail
+- Traces visible in Jaeger
+- Terraform infra reproducible

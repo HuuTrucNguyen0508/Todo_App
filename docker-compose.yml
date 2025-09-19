@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '3003:3003'
+    environment:
+      - NODE_ENV=production
+      - API_BASE_URL=http://api:4003
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:4003
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+      - OTEL_SERVICE_NAME=cursor-todo-web
+      - OTEL_SERVICE_VERSION=1.0.0
+    depends_on:
+      - api
+      - jaeger
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3003/api/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - 'promtail=true'
+      - 'service=web'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '4003:4003'
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+      - OTEL_SERVICE_NAME=cursor-todo-api
+      - OTEL_SERVICE_VERSION=1.0.0
+      - PORT=4003
+    depends_on:
+      - prometheus
+      - loki
+      - jaeger
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:4003/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - 'promtail=true'
+      - 'service=api'
+
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    ports:
+      - '9093:9090'
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    labels:
+      - 'promtail=true'
+      - 'service=prometheus'
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    ports:
+      - '3103:3000'
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+      - loki
+    labels:
+      - 'promtail=true'
+      - 'service=grafana'
+
+  loki:
+    image: grafana/loki:2.8.0
+    ports:
+      - '3113:3100'
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    labels:
+      - 'promtail=true'
+      - 'service=loki'
+
+  promtail:
+    image: grafana/promtail:2.8.0
+    volumes:
+      - ./observability/promtail/promtail.yml:/etc/promtail/config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    labels:
+      - 'promtail=false'
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.46
+    ports:
+      - '16683:16686' # Jaeger UI
+      - '4318:4318' # OTLP HTTP receiver
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    labels:
+      - 'promtail=true'
+      - 'service=jaeger'
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:

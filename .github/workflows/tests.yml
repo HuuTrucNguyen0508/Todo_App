@@ -1,0 +1,130 @@
+name: Tests
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Uncomment and configure when you add testing
+    # services:
+    #   postgres:
+    #     image: postgres:15
+    #     env:
+    #       POSTGRES_PASSWORD: test
+    #       POSTGRES_USER: test
+    #       POSTGRES_DB: test_db
+    #     options: >-
+    #       --health-cmd pg_isready
+    #       --health-interval 10s
+    #       --health-timeout 5s
+    #       --health-retries 5
+    #     ports:
+    #       - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Uncomment when you add testing
+      # - name: Run database migrations
+      #   run: pnpm run migrate
+      #   env:
+      #     DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+
+      - name: Run tests (placeholder)
+        run: pnpm run test
+        env:
+          NODE_ENV: test
+          NODE_OPTIONS: --experimental-vm-modules
+          # DATABASE_URL: postgresql://test:test@localhost:5432/test_db
+        continue-on-error: false
+        id: tests
+
+      # Uncomment when you have real tests with coverage
+      # - name: Upload coverage reports
+      #   uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: coverage-reports
+      #     path: coverage/
+      #     retention-days: 30
+
+      - name: Generate test summary
+        if: always()
+        run: |
+          echo "# 🧪 Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.tests.outcome }}" == "success" ]; then
+            echo "✅ **All tests passed!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Status" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests: ✅ Passed" >> $GITHUB_STEP_SUMMARY
+            echo "- Coverage: 📊 Not configured yet" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Tests failed!**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## Status" >> $GITHUB_STEP_SUMMARY
+            echo "- Tests: ❌ Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "## 🔧 Next Steps" >> $GITHUB_STEP_SUMMARY
+            echo "1. Check the test logs above for details" >> $GITHUB_STEP_SUMMARY
+            echo "2. Fix the failing tests" >> $GITHUB_STEP_SUMMARY
+            echo "3. Run tests locally: \`pnpm run test\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Annotate test failures
+        if: steps.tests.outcome == 'failure'
+        run: |
+          echo "::error title=Test Failures::Some tests failed. Check the logs above for details and run 'pnpm run test' locally to debug."
+
+      # TODO: When you add testing, uncomment these sections:
+      #
+      # For API testing, consider adding:
+      # - Jest or Vitest for unit tests
+      # - Supertest for API endpoint testing
+      # - Test database setup with Prisma
+      #
+      # For Web testing, consider adding:
+      # - Jest + React Testing Library
+      # - Playwright for E2E tests
+      # - Component testing with Storybook
+      #
+      # Example test scripts to add to package.json:
+      # "test": "pnpm --recursive test",
+      # "test:api": "pnpm --filter=api test",
+      # "test:web": "pnpm --filter=web test",
+      # "test:e2e": "playwright test",
+      # "test:coverage": "pnpm --recursive test --coverage"
